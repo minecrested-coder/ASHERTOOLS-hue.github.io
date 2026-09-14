@@ -3,297 +3,85 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ASHER · mlbb suite</title>
-  <meta name="description" content="ASHER — MLBB device ID generator, device checker, account checker with rank + inactivity filters.">
+  <title>ASHER · device id generator</title>
+  <meta name="description" content="Generate random device IDs in the browser. Crypto-random, offline, downloadable.">
   <meta name="theme-color" content="#0a0a0f">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◆</text></svg>">
 </head>
 <body>
   <header class="site-header">
     <div class="nav container">
-      <a href="#" class="logo">
-        <span class="logo-mark">◆</span>
-        <span class="logo-text">ASHER</span>
-      </a>
-      <span class="nav-tag">mlbb suite</span>
+      <span class="logo"><span class="logo-mark">◆</span><span class="logo-text">ASHER</span></span>
+      <span class="nav-tag">device id generator</span>
     </div>
   </header>
 
   <main class="container">
     <section class="intro">
-      <p class="eyebrow">// client-side · crypto + md5 sign → moonton api</p>
-      <h1>Generate · validate · filter.<br><span class="grad">All in the browser.</span></h1>
+      <p class="eyebrow">// crypto.getRandomValues() · no network calls</p>
+      <h1>Generate device IDs.<br><span class="grad">Runs entirely offline.</span></h1>
+      <p class="sub">Bulk-generate random hex identifiers in four formats. Copy or download as .txt or .zip. Nothing leaves the browser — open devtools, watch the network tab stay empty.</p>
     </section>
 
-    <nav class="tabs" role="tablist">
-      <button class="tab" data-tab="generator" data-active="1">generator</button>
-      <button class="tab" data-tab="devices">device check</button>
-      <button class="tab" data-tab="accounts">account check</button>
-    </nav>
-
-    <!-- ═══════════ GENERATOR ═══════════ -->
-    <section class="panel" data-panel="generator">
+    <section class="panel">
       <div class="panel-row">
         <label class="field">
           <span>format</span>
-          <select id="g_format">
-            <option value="hex32">UUID4 hex32 · 32 lowercase hex (Moonton)</option>
-            <option value="hex32u">UUID4 hex32 · 32 uppercase hex</option>
-            <option value="hex16">Android ID · 16 lowercase hex</option>
+          <select id="format">
+            <option value="hex32">32 lowercase hex</option>
+            <option value="hex32u">32 uppercase hex</option>
+            <option value="hex16">16 lowercase hex</option>
             <option value="dashed">UUID4 dashed · 36 chars</option>
           </select>
         </label>
         <label class="field">
           <span>count</span>
-          <input type="number" id="g_count" min="1" max="100000" value="500">
+          <input type="number" id="count" min="1" max="100000" value="500">
         </label>
         <label class="field">
           <span>split into files of</span>
-          <input type="number" id="g_chunk" min="1" max="10000" value="100">
+          <input type="number" id="chunk" min="1" max="10000" value="100">
         </label>
       </div>
+
       <div class="panel-actions">
-        <button id="g_run" class="btn btn-primary">Generate</button>
-        <button id="g_clear" class="btn btn-ghost">Clear</button>
+        <button id="gen" class="btn btn-primary">Generate</button>
+        <button id="clear" class="btn btn-ghost">Clear</button>
       </div>
+
       <div class="stats">
-        <span><strong id="g_stTotal">0</strong> generated</span>
-        <span><strong id="g_stFiles">0</strong> files</span>
-        <span><strong id="g_stPer">0</strong> per file</span>
-        <span class="stat-fmt"><strong id="g_stFmt">hex32</strong></span>
-      </div>
-      <div class="output-wrap" id="g_outputWrap" hidden>
-        <div class="output-head">
-          <span id="g_label">output</span>
-          <div class="output-actions">
-            <button class="mini" id="g_copy">copy all</button>
-            <button class="mini" id="g_dl">download .txt</button>
-            <button class="mini" id="g_zip">download .zip</button>
-          </div>
-        </div>
-        <pre id="g_output" class="output"></pre>
-        <div class="files-wrap" id="g_filesWrap" hidden>
-          <div class="files-head">split files</div>
-          <div class="files" id="g_files"></div>
-        </div>
+        <span><strong id="stTotal">0</strong> generated</span>
+        <span><strong id="stFiles">0</strong> files</span>
+        <span><strong id="stPer">0</strong> per file</span>
+        <span class="stat-fmt"><strong id="stFmt">hex32</strong></span>
       </div>
     </section>
 
-    <!-- ═══════════ DEVICE CHECKER ═══════════ -->
-    <section class="panel" data-panel="devices" hidden>
-      <div class="panel-row">
-        <label class="field">
-          <span>mode</span>
-          <select id="d_mode">
-            <option value="paste">paste device IDs</option>
-            <option value="file">load from file</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>threads</span>
-          <input type="number" id="d_threads" min="1" max="30" value="10">
-        </label>
-        <label class="field">
-          <span>delay ms</span>
-          <input type="number" id="d_delay" min="0" max="5000" value="150">
-        </label>
-      </div>
-
-      <div class="panel-row">
-        <label class="field">
-          <span>relay</span>
-          <select id="d_relay" class="relay-select">
-            <option value="custom">my worker url</option>
-            <option value="corsproxy">corsproxy.io (public)</option>
-            <option value="allorigins">allorigins.win (public)</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>custom worker url</span>
-          <input type="text" id="d_worker" placeholder="https://asher-proxy.username.workers.dev" autocomplete="off">
-        </label>
-      </div>
-
-      <div class="panel-row" id="d_pasteRow">
-        <label class="field field-wide">
-          <span>device IDs (one per line, or comma/space separated)</span>
-          <textarea id="d_input" rows="6" placeholder="a1b2c3d4e5f60718293a4b5c6d7e8f90"></textarea>
-        </label>
-      </div>
-      <div class="panel-row" id="d_fileRow" hidden>
-        <label class="field field-wide">
-          <span>device ID file</span>
-          <input type="file" id="d_file" accept=".txt,.csv">
-        </label>
-      </div>
-
-      <div class="panel-actions">
-        <button id="d_run" class="btn btn-primary">Run</button>
-        <button id="d_stop" class="btn btn-ghost" disabled>Stop</button>
-        <button id="d_clear" class="btn btn-ghost">Clear</button>
-      </div>
-
-      <div class="stats">
-        <span><strong id="d_stDone">0</strong> checked</span>
-        <span><strong id="d_stTotal">0</strong> total</span>
-        <span class="ok"><strong id="d_stClean">0</strong> clean</span>
-        <span class="bad"><strong id="d_stBan">0</strong> banned</span>
-        <span class="warn"><strong id="d_stBound">0</strong> bound</span>
-        <span class="muted"><strong id="d_stFmt">0</strong> invalid</span>
-        <span class="err"><strong id="d_stErr">0</strong> err</span>
-        <span class="elapsed"><strong id="d_stTime">0.0s</strong></span>
-      </div>
-      <div class="progress-track"><div class="progress-fill" id="d_prog"></div></div>
-
-      <div class="output-wrap" id="d_outputWrap" hidden>
-        <div class="output-head">
-          <span id="d_label">results</span>
-          <div class="output-actions">
-            <button class="mini" data-dfilter="all" data-active="1">all</button>
-            <button class="mini" data-dfilter="clean">clean</button>
-            <button class="mini" data-dfilter="banned">banned</button>
-            <button class="mini" data-dfilter="bound">bound</button>
-            <button class="mini" data-dfilter="error">err</button>
-            <button class="mini" id="d_copyClean">copy clean</button>
-            <button class="mini" id="d_dlClean">download clean</button>
-          </div>
-        </div>
-        <div class="results" id="d_results"></div>
-      </div>
-    </section>
-
-    <!-- ═══════════ ACCOUNT CHECKER ═══════════ -->
-    <section class="panel" data-panel="accounts" hidden>
-      <div class="panel-row">
-        <label class="field">
-          <span>mode</span>
-          <select id="a_mode">
-            <option value="paste">paste combos</option>
-            <option value="file">load from file</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>threads</span>
-          <input type="number" id="a_threads" min="1" max="30" value="8">
-        </label>
-        <label class="field">
-          <span>delay ms</span>
-          <input type="number" id="a_delay" min="0" max="5000" value="200">
-        </label>
-      </div>
-
-      <div class="panel-row">
-        <label class="field">
-          <span>relay</span>
-          <select id="a_relay" class="relay-select">
-            <option value="custom">my worker url</option>
-            <option value="corsproxy">corsproxy.io (public)</option>
-            <option value="allorigins">allorigins.win (public)</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>custom worker url</span>
-          <input type="text" id="a_worker" placeholder="https://asher-proxy.username.workers.dev" autocomplete="off">
-        </label>
-      </div>
-
-      <!-- device pool source -->
-      <div class="panel-row">
-        <label class="field field-wide">
-          <span>device pool (paste from device checker clean output — one per line)</span>
-          <textarea id="a_pool" rows="3" placeholder="leave blank → random device per request"></textarea>
-        </label>
-      </div>
-
-      <!-- filters -->
-      <div class="filters">
-        <div class="filters-title">filters</div>
-        <div class="panel-row">
-          <label class="field">
-            <span>account state</span>
-            <select id="a_state">
-              <option value="all">all (live + dead)</option>
-              <option value="live">live only</option>
-              <option value="banned">banned only</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>inactivity ≥ days</span>
-            <input type="number" id="a_inactive" min="0" max="9999" value="0" placeholder="0 = off">
-          </label>
-          <label class="field">
-            <span>rank range</span>
-            <select id="a_rankRange">
-              <option value="warrior-glory" selected>Warrior → Mythical Glory</option>
-              <option value="warrior-immortal">Warrior → Mythical Immortal</option>
-              <option value="epic-glory">Epic → Mythical Glory</option>
-              <option value="legend-glory">Legend → Mythical Glory</option>
-              <option value="mythic-glory">Mythic → Mythical Glory</option>
-              <option value="any">any rank</option>
-            </select>
-          </label>
+    <section class="output-wrap" id="outputWrap" hidden>
+      <div class="output-head">
+        <span id="label">output</span>
+        <div class="output-actions">
+          <button class="mini" id="copyAll">copy all</button>
+          <button class="mini" id="dlTxt">download .txt</button>
+          <button class="mini" id="dlZip">download .zip</button>
         </div>
       </div>
+      <pre id="output" class="output" tabindex="0"></pre>
 
-      <div class="panel-row" id="a_pasteRow">
-        <label class="field field-wide">
-          <span>combos (email:pass, one per line)</span>
-          <textarea id="a_input" rows="6" placeholder="user1@mail.com:password1"></textarea>
-        </label>
-      </div>
-      <div class="panel-row" id="a_fileRow" hidden>
-        <label class="field field-wide">
-          <span>combo file</span>
-          <input type="file" id="a_file" accept=".txt,.csv">
-        </label>
-      </div>
-
-      <div class="panel-actions">
-        <button id="a_run" class="btn btn-primary">Run</button>
-        <button id="a_stop" class="btn btn-ghost" disabled>Stop</button>
-        <button id="a_clear" class="btn btn-ghost">Clear</button>
-      </div>
-
-      <div class="stats">
-        <span><strong id="a_stDone">0</strong> checked</span>
-        <span><strong id="a_stTotal">0</strong> total</span>
-        <span class="ok"><strong id="a_stHit">0</strong> hit</span>
-        <span class="bad"><strong id="a_stBan">0</strong> banned</span>
-        <span class="muted"><strong id="a_stWrong">0</strong> wrong pw</span>
-        <span class="muted"><strong id="a_stNoAcc">0</strong> no acc</span>
-        <span class="warn"><strong id="a_stLimit">0</strong> limit</span>
-        <span class="err"><strong id="a_stErr">0</strong> err</span>
-        <span class="elapsed"><strong id="a_stTime">0.0s</strong></span>
-      </div>
-      <div class="progress-track"><div class="progress-fill" id="a_prog"></div></div>
-
-      <div class="output-wrap" id="a_outputWrap" hidden>
-        <div class="output-head">
-          <span id="a_label">results</span>
-          <div class="output-actions">
-            <button class="mini" data-afilter="all" data-active="1">all</button>
-            <button class="mini" data-afilter="hit">hit</button>
-            <button class="mini" data-afilter="banned">banned</button>
-            <button class="mini" data-afilter="filtered">matched filters</button>
-            <button class="mini" data-afilter="wrong_pw">wrong pw</button>
-            <button class="mini" data-afilter="error">err</button>
-            <button class="mini" id="a_copyHits">copy hits</button>
-            <button class="mini" id="a_dlHits">download hits</button>
-          </div>
-        </div>
-        <div class="results" id="a_results"></div>
+      <div class="files-wrap" id="filesWrap" hidden>
+        <div class="files-head">split files</div>
+        <div class="files" id="files"></div>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
     <div class="container footer-inner">
-      <p>© <span id="year"></span> ASHER · <a href="https://github.com/" target="_blank" rel="noopener">github</a></p>
-      <p class="dim">runs in your browser · worker-friendly</p>
+      <p>© <span id="year"></span> ASHER</p>
+      <p class="dim">offline · no trackers · no backend</p>
     </div>
   </footer>
 
