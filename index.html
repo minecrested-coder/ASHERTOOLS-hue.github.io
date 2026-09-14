@@ -3,27 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ASHER · device id generator</title>
-  <meta name="description" content="Generate random device IDs in the browser. Crypto-random, offline, downloadable.">
+  <meta name="description" content="ASHER — browser-based device ID generator. UUID4, hex, Android ID. Bulk output, copy, download.">
   <meta name="theme-color" content="#0a0a0f">
+  <title>ASHER · device ID generator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◆</text></svg>">
 </head>
 <body>
   <header class="site-header">
     <div class="nav container">
-      <span class="logo"><span class="logo-mark">◆</span><span class="logo-text">ASHER</span></span>
+      <a href="#" class="logo">
+        <span class="logo-mark">◆</span>
+        <span class="logo-text">ASHER</span>
+      </a>
       <span class="nav-tag">device id generator</span>
     </div>
   </header>
 
   <main class="container">
     <section class="intro">
-      <p class="eyebrow">// crypto.getRandomValues() · no network calls</p>
-      <h1>Generate device IDs.<br><span class="grad">Runs entirely offline.</span></h1>
-      <p class="sub">Bulk-generate random hex identifiers in four formats. Copy or download as .txt or .zip. Nothing leaves the browser — open devtools, watch the network tab stay empty.</p>
+      <p class="eyebrow">// client-side · crypto.getRandomValues()</p>
+      <h1>Generate device IDs.<br><span class="grad">Nothing leaves the browser.</span></h1>
+      <p class="sub">Bulk generate Moonton-format device IDs. Copy or download as .txt — feed straight into the ASHER checker.</p>
     </section>
 
     <section class="panel">
@@ -31,16 +35,18 @@
         <label class="field">
           <span>format</span>
           <select id="format">
-            <option value="hex32">32 lowercase hex</option>
-            <option value="hex32u">32 uppercase hex</option>
-            <option value="hex16">16 lowercase hex</option>
+            <option value="hex32">UUID4 hex32 · 32 lowercase hex (Moonton)</option>
+            <option value="hex32u">UUID4 hex32 · 32 uppercase hex</option>
+            <option value="hex16">Android ID · 16 lowercase hex</option>
             <option value="dashed">UUID4 dashed · 36 chars</option>
           </select>
         </label>
+
         <label class="field">
           <span>count</span>
           <input type="number" id="count" min="1" max="100000" value="500">
         </label>
+
         <label class="field">
           <span>split into files of</span>
           <input type="number" id="chunk" min="1" max="10000" value="100">
@@ -52,21 +58,21 @@
         <button id="clear" class="btn btn-ghost">Clear</button>
       </div>
 
-      <div class="stats">
+      <div class="stats" id="stats">
         <span><strong id="stTotal">0</strong> generated</span>
         <span><strong id="stFiles">0</strong> files</span>
-        <span><strong id="stPer">0</strong> per file</span>
+        <span><strong id="stPerFile">0</strong> per file</span>
         <span class="stat-fmt"><strong id="stFmt">hex32</strong></span>
       </div>
     </section>
 
     <section class="output-wrap" id="outputWrap" hidden>
       <div class="output-head">
-        <span id="label">output</span>
+        <span id="outputLabel">output</span>
         <div class="output-actions">
-          <button class="mini" id="copyAll">copy all</button>
-          <button class="mini" id="dlTxt">download .txt</button>
-          <button class="mini" id="dlZip">download .zip</button>
+          <button id="copyAll" class="mini">copy all</button>
+          <button id="downloadAll" class="mini">download .txt</button>
+          <button id="downloadZip" class="mini">download .zip</button>
         </div>
       </div>
       <pre id="output" class="output" tabindex="0"></pre>
@@ -80,8 +86,8 @@
 
   <footer class="site-footer">
     <div class="container footer-inner">
-      <p>© <span id="year"></span> ASHER</p>
-      <p class="dim">offline · no trackers · no backend</p>
+      <p>© <span id="year"></span> ASHER · <a href="https://github.com/" target="_blank" rel="noopener">github</a></p>
+      <p class="dim">no trackers · no backend · runs offline</p>
     </div>
   </footer>
 
